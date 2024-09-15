@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextIndex","fullTextSearch"]
+}
+
+datasource db {
+  provider = "mysql"
+  relationMode = "prisma"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(uuid())
+  username String @unique
+  imageUrl String @db.Text
+  externalUserId String @unique
+  bio String? @db.Text
+
+  blocking Block[] @relation("Blocking")
+  blockedBy Block[] @relation("BlockedBy")
+
+
+  stream Stream? @relation("StreamOwner")
+
+  following Follow[] @relation("Following")
+  followedBy Follow[] @relation("FollowedBy")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Follow {
+  id       String   @id @default(uuid())
+  followerId String
+  followingId String
+  follower  User  @relation(name:"Following",fields: [followerId], references: [id],onDelete: Cascade)
+  following User @relation(name:"FollowedBy",fields: [followingId], references: [id], onDelete: Cascade)
+
+
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([followerId,followingId])
+  @@index([followerId])
+  @@index([followingId])
+  
+}
+
+
+model Block{
+  id String @id @default(uuid())
+  blockerId String
+  blockedId String
+
+  Blocker User @relation(name:"Blocking",fields: [blockerId], references: [id], onDelete: Cascade)
+  Blocked User @relation(name:"BlockedBy",fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockedId,blockerId])
+  @@index([blockedId])
+  @@index([blockerId])
+}
+
+model Stream {
+  id String @id @default(uuid())
+  name String 
+  thumnailUrl String? @db.Text
+  description String? @db.Text
+
+  ingressId String? @unique
+  serverUrl String? @db.Text
+  streamKey String? @db.Text
+
+  isEnabledChat Boolean @default(false)
+  isDelayChat Boolean @default(false)
+  isOnlyFollowerOnly Boolean @default(false)
+  isLive Boolean @default(false)
+
+  userId String @unique
+  user User @relation(name:"StreamOwner",fields: [userId], references: [id],onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index ([userId])
+  @@index ([ingressId])
+  @@unique([userId,ingressId])
+  @@fulltext([name])
+
+}
